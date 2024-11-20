@@ -78,7 +78,7 @@ Run the Streamlit app:
 ---
 ## 💡Usage
 
-To use the Multi-PDF-s 📚ChatApp AI Agent 🤖, U can have glimpse of look by clicking on this link : [Launch App On Streamlit](https://multi-pdfschatappai-agent.streamlit.app/). To run app, fork app and follow the below steps to start using it. Use the sidebar to upload PDF files and train the chatbot. Once trained, you can have conversations with the chatbot by entering questions in the text input field.
+To use the Multi-PDF-s 📚ChatApp AI Agent 🤖. To run app, fork app and follow the below steps to start using it. Use the sidebar to upload PDF files and train the chatbot. Once trained, you can have conversations with the chatbot by entering questions in the text input field.
 
 In case You want to run & implement project on your system then follow these steps:
 
