@@ -2,35 +2,29 @@ import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+import google.generativeai as genai
 from langchain.vectorstores import FAISS
-from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
-from langchain.embeddings import OllamaEmbeddings
 from dotenv import load_dotenv
-import tempfile
 
-# Load environment variables first
+# Load environment variables
 load_dotenv()
-
-# Move API key to environment variable for better security
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 def get_pdf_text(pdf_docs):
     text = ""
     for pdf in pdf_docs:
-        with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
-            tmp_file.write(pdf.read())
-            tmp_file.seek(0)
-            pdf_reader = PdfReader(tmp_file.name)
-            for page in pdf_reader.pages:
-                text += page.extract_text()
-        os.unlink(tmp_file.name)
+        pdf_reader = PdfReader(pdf)
+        for page in pdf_reader.pages:
+            text += page.extract_text()
     return text
 
 def get_text_chunks(text):
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=50000,
+        chunk_size=50000, 
         chunk_overlap=1000,
         separators=["\n\n", "\n", " ", ""]
     )
@@ -39,11 +33,10 @@ def get_text_chunks(text):
 
 def get_vector_store(text_chunks):
     try:
-        embeddings = OllamaEmbeddings(model="mxbai-embed-large")
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
         vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-        
-        # Save with allow_dangerous_deserialization enabled
-        vector_store.save_local("faiss_index", allow_dangerous_deserialization=True)
+        # Save without the allow_dangerous_deserialization parameter
+        vector_store.save_local("faiss_index")
         return vector_store
     except Exception as e:
         st.error(f"Error creating vector store: {str(e)}")
@@ -57,19 +50,16 @@ def get_conversational_chain():
     Question: \n{question}\n
     Answer:
     """
-    model = ChatGroq(
-        model="llama3-8b-8192",
-        temperature=0.3,
-        api_key=GROQ_API_KEY
-    )
+    
+    model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.3)
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
     return chain
 
 def user_input(user_question):
     try:
-        embeddings = OllamaEmbeddings(model="mxbai-embed-large")
-        # Load with allow_dangerous_deserialization enabled
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        # Only use allow_dangerous_deserialization when loading
         new_db = FAISS.load_local(
             "faiss_index",
             embeddings,
@@ -84,16 +74,30 @@ def user_input(user_question):
         )
         st.write("Reply: ", response["output_text"])
     except Exception as e:
-        st.error(f"An error occurred while processing your question: {str(e)}")
+        st.error(f"An error occurred: {str(e)}")
 
 def main():
     st.set_page_config("Multi PDF Chatbot", page_icon=":scroll:")
     st.header("Multi-PDF's 📚 - Chat Agent 🤖")
 
+    user_question = st.text_input("Ask a Question from the PDF Files uploaded .. ✍️📝")
+    
+    if user_question:
+        if not os.path.exists("faiss_index"):
+            st.warning("Please upload and process PDF files before asking questions.")
+            return
+        user_input(user_question)
+
     with st.sidebar:
+        try:
+            st.image("img/Robot.jpg")
+        except:
+            st.write("Robot image not found")
+        st.write("---")
+        
         st.title("📁 PDF File's Section")
         pdf_docs = st.file_uploader(
-            "Upload your PDF Files & Click on the Submit & Process Button",
+            "Upload your PDF Files & \n Click on the Submit & Process Button ",
             accept_multiple_files=True
         )
         
@@ -117,18 +121,17 @@ def main():
                     st.error(f"An error occurred during processing: {str(e)}")
         
         st.write("---")
-        st.write("AI App created by @ Bagyalakshmi Shinde")
-
-    user_question = st.text_input("Ask a Question from the PDF Files uploaded .. ✍️📝")
-    if user_question:
-        if not os.path.exists("faiss_index"):
-            st.warning("Please upload and process PDF files before asking questions.")
-            return
-        user_input(user_question)
+        # try:
+        #     st.image("img/gkj.jpg")
+        # except:
+        #     st.write("Author image not found")
+        st.write("AI App created by @ Bagyalakshmi S Shinde")
 
     st.markdown(
         """
-        © Bagyalakshmi S Shinde| Made with ❤️
+        <div style="position: fixed; bottom: 0; left: 0; width: 100%; background-color: #0E1117; padding: 15px; text-align: center;">
+            © <a href="https://github.com/Bagyalakshmi1429/Multi-PDFs_ChatApp_AI-Agent" target="_blank">Bagyalakshmi S Shinde</a> | Made with ❤️
+        </div>
         """,
         unsafe_allow_html=True
     )
